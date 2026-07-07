@@ -9,6 +9,7 @@ import com.example.booking.repository.BookingRepository;
 import com.example.booking.repository.FlightRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,10 +18,14 @@ public class BookingService {
 
     private final FlightRepository flightRepository;
     private final BookingRepository bookingRepository;
+    private final Clock clock;
 
-    public BookingService(FlightRepository flightRepository, BookingRepository bookingRepository) {
+    public BookingService(FlightRepository flightRepository,
+                          BookingRepository bookingRepository,
+                          Clock clock) {
         this.flightRepository = flightRepository;
         this.bookingRepository = bookingRepository;
+        this.clock = clock;
     }
 
     /**
@@ -28,22 +33,21 @@ public class BookingService {
      * so overbooking cannot occur even under concurrent requests.
      *
      * @throws FlightNotFoundException    if the flight number is unknown.
-     * @throws InsufficientSeatsException if not enough seats remain.
+     * @throws InsufficientSeatsException if not enough seats remain (thrown by Flight.reserve).
      */
     public Booking book(String flightNumber, String passengerName, int seats) {
-        Flight flight = flightRepository.findByFlightNumber(flightNumber)
-                .orElseThrow(() -> new FlightNotFoundException(flightNumber));
+        String fn = FlightService.normalize(flightNumber);
+        Flight flight = flightRepository.findByFlightNumber(fn)
+                .orElseThrow(() -> new FlightNotFoundException(fn));
 
-        if (!flight.tryReserve(seats)) {
-            throw new InsufficientSeatsException(flightNumber, seats, flight.getAvailableSeats());
-        }
+        flight.reserve(seats); // atomically throws InsufficientSeatsException if full
 
         Booking booking = new Booking(
                 UUID.randomUUID().toString(),
-                flightNumber,
+                fn,
                 passengerName,
                 seats,
-                Instant.now());
+                Instant.now(clock));
         return bookingRepository.save(booking);
     }
 

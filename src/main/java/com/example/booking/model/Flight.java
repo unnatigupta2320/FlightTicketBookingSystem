@@ -1,5 +1,7 @@
 package com.example.booking.model;
 
+import com.example.booking.exception.InsufficientSeatsException;
+
 /**
  * A flight with a fixed seat inventory. Seat reservation is guarded by intrinsic
  * locking on the instance so concurrent bookings can never oversell the flight.
@@ -18,16 +20,15 @@ public class Flight {
 
     /**
      * Atomically reserve {@code seats} if enough remain.
-     *
-     * @return {@code true} if the seats were reserved, {@code false} if there was
-     *         not enough remaining capacity (no state change in that case).
+     * We should update the remaining seats also inside the block
+     * throws InsufficientSeatsException if there are not enough seats available
      */
-    public synchronized boolean tryReserve(int seats) {
-        if (seats > totalSeats - bookedSeats) {
-            return false;
+     public synchronized void reserve(int seats) {
+        int available = totalSeats - bookedSeats;
+        if (seats > available) {
+            throw new InsufficientSeatsException(flightNumber, seats, available);
         }
         bookedSeats += seats;
-        return true;
     }
 
     /** Release previously reserved seats back into inventory. */
