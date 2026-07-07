@@ -1,5 +1,6 @@
 package com.example.booking.service;
 
+import com.example.booking.exception.BookingNotFoundException;
 import com.example.booking.exception.FlightNotFoundException;
 import com.example.booking.exception.InsufficientSeatsException;
 import com.example.booking.model.Booking;
@@ -44,5 +45,18 @@ public class BookingService {
                 seats,
                 Instant.now());
         return bookingRepository.save(booking);
+    }
+
+    /**
+     * Cancel a booking and release its seats back to the flight. Removal is atomic,
+     * so a concurrent double-cancel releases the seats at most once.
+     *
+     * @throws BookingNotFoundException if the booking id is unknown.
+     */
+    public void cancel(String bookingId) {
+        Booking booking = bookingRepository.remove(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException(bookingId));
+        flightRepository.findByFlightNumber(booking.flightNumber())
+                .ifPresent(flight -> flight.release(booking.seats()));
     }
 }

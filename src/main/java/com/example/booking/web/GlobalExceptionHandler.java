@@ -1,5 +1,6 @@
 package com.example.booking.web;
 
+import com.example.booking.exception.BookingNotFoundException;
 import com.example.booking.exception.FlightAlreadyExistsException;
 import com.example.booking.exception.FlightNotFoundException;
 import com.example.booking.exception.InsufficientSeatsException;
@@ -18,8 +19,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(FlightNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(FlightNotFoundException ex) {
+    @ExceptionHandler({FlightNotFoundException.class, BookingNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFound(RuntimeException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
